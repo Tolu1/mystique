@@ -17,9 +17,43 @@
 		"commands": [
 			{
 				"command": "mystique.whenActive",
-				"title": "Mystique"
+				"title": " Start Mystique",
+				"category": "Mystique"
+			},
+			{
+				"command": "mystique.shapeShift",
+				"title": "Run with Mystique",
+				"category": "Mystique"
+			},
+			{
+				"command": "mystique.terminate",
+				"title": "Stop Mystique",
+				"category": "Mystique"
 			}
-		]
+		],
+		"menus": {
+			"editor/context": [
+				{
+					"command": "mystique.shapeShift",
+					"group": "Grp@Mystique"
+
+				},
+				{
+					"command": "mystique.terminate",
+					"group": "Grp@Mystique"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "mystique.shapeShift",
+					"group": "navigation@Mystique"
+				},
+				{
+					"command": "mystique.terminate",
+					"group": "navigation@Mystique"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

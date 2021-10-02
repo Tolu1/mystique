@@ -13,11 +13,17 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('mystique.shapeShift', () => {
-			vscode.window.showInformationMessage(`Mystique(${myst.name}) is shapeshifting`);
+			vscode.window.showInformationMessage(`Mystique (${myst.name}) is shapeshifting`);
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('mystique.terminate', () => {
+			vscode.window.showInformationMessage('Mystique was terminated by you');
 		})
 	);
 }
 
 export function deactivate() {
-	console.log('Mystique is no longer active!');
+	console.log('Mystique is no longer active.');
 }
