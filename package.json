@@ -10,14 +10,14 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:mystique.helloWorld"
+		"onCommand:mystique.whenActive"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "mystique.helloWorld",
-				"title": "Hello World"
+				"command": "mystique.whenActive",
+				"title": "Mystique"
 			}
 		]
 	},
