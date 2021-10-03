@@ -36,7 +36,6 @@
 				{
 					"command": "mystique.shapeShift",
 					"group": "Grp@Mystique"
-
 				},
 				{
 					"command": "mystique.terminate",
@@ -75,5 +74,13 @@
 		"mocha": "^9.1.1",
 		"typescript": "^4.4.3",
 		"@vscode/test-electron": "^1.6.2"
+	},
+	"dependencies": {
+		"@types/fs-extra": "^9.0.13",
+		"@types/uuid": "^8.3.1",
+		"acorn": "^8.5.0",
+		"recast": "^0.20.5",
+		"fs-extra": "^10.0.0",
+		"uuid": "^8.3.2"
 	}
 }
