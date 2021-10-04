@@ -7,7 +7,7 @@ import path = require('path');
 
 class Helper {
 
-    public static correctFilePath(path: string): string {
+    public static correctFilePathForJSON(path: string): string {
         let chars = path.split('');
         for (let i = 0; i < chars.length; i++) {
             if (chars[i] === '\\') {
@@ -22,8 +22,10 @@ class Helper {
 export class Mystique {
 
     public name: string;
+    private settings: Object = {};
     private rootDir: string = '';
     private activeFileName: string = '';
+    private appFiles: string[] = [];
     
     constructor() {
         
@@ -44,6 +46,7 @@ export class Mystique {
         }
 
         this.createConfiguration();
+        this.watchDevelopment();
     }
 
     private getNewConfiguration(): string {
@@ -52,7 +55,7 @@ export class Mystique {
     "settings": {
         "version": "1.0.0",
         "mode": "auto",
-        "target": ["${Helper.correctFilePath(this.activeFileName)}"],
+        "target": ["${Helper.correctFilePathForJSON(this.activeFileName)}"],
         "preserve": true
     }
 }`;
@@ -102,9 +105,28 @@ export class Mystique {
 
     };
 
-    public async watchFile() {
-
+    private async watchDevelopment() {
+        let files = await this.getAppFiles();
+        console.log(files);
     };
+
+    private async getAppFiles(path=this.rootDir) {
+        let appFiles: string[] = [];
+        let uri = vscode.Uri.file(path);
+        let dirs = await vscode.workspace.fs.readDirectory(uri);
+        debugger;
+        for await (let dir of dirs) {
+            if (dir[0].endsWith('.js') && dir[1] === 1) {
+                appFiles.push(path + '/' + dir[0]);
+            } else if (dir[1] === 2) {
+                let files = await this.getAppFiles(path + '/' + dir[0]);
+                appFiles.concat(files);                    
+            }
+            debugger;
+        }
+        debugger;
+        return appFiles;
+    }
 
     private static async parseSource(source: string) {
 

@@ -79,8 +79,9 @@
 		"@types/fs-extra": "^9.0.13",
 		"@types/uuid": "^8.3.1",
 		"acorn": "^8.5.0",
-		"recast": "^0.20.5",
 		"fs-extra": "^10.0.0",
+		"recast": "^0.20.5",
+		"recursive-readdir-async": "^1.1.8",
 		"uuid": "^8.3.2"
 	}
 }

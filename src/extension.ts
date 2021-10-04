@@ -14,7 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('mystique.shapeShift', () => {
 			myst.loadInstance();
-			vscode.window.showInformationMessage(`Mystique (${myst.name}) is shapeshifting`);
+			// vscode.window.showInformationMessage(`Mystique (${myst.name}) is shapeshifting`);
 		})
 	);
 
