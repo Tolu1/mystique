@@ -5,24 +5,12 @@ import * as recast from 'recast';
 import { v4 as uuid4 } from 'uuid';
 import path = require('path');
 
-class Helper {
-
-    public static correctFilePathForJSON(path: string): string {
-        let chars = path.split('');
-        for (let i = 0; i < chars.length; i++) {
-            if (chars[i] === '\\') {
-                chars[i] = '/';
-            }
-        }
-        return chars.join('');
-    } 
-    
-}
+// ===============================================================================================================
 
 export class Mystique {
 
     public name: string;
-    private settings: Object = {};
+    private config: Object = {};
     private rootDir: string = '';
     private activeFileName: string = '';
     private appFiles: string[] = [];
@@ -70,10 +58,11 @@ export class Mystique {
                 // Do not update preserved configuration
                 let uri = vscode.Uri.file(path);
                 let data = await vscode.workspace.fs.readFile(uri);
-                let str = Mystique.decodeText(data);
+                let str = Helper.decodeText(data);
                 try {
-                    let object = JSON.parse(str);
-                    preserve = object.settings.preserve;
+                    let config = JSON.parse(str);
+                    preserve = config.settings.preserve;
+                    this.config = config;
                 } catch (err) {
                     console.log(err);
                     vscode.window.showErrorMessage('Bad JSON in mystique.json');
@@ -82,9 +71,11 @@ export class Mystique {
             } 
             if (!val || !preserve) {
                 let uri = vscode.Uri.file(path);
-                let data = Mystique.encodeText(this.getNewConfiguration());
+                let config = this.getNewConfiguration();
+                let data = Helper.encodeText(config);
                 vscode.workspace.fs.writeFile(uri, data)
                 .then(() => {
+                    this.config = JSON.parse(config);
                     vscode.window.showInformationMessage('Configuration set up completed');
                 }, err => {
                     vscode.window.showErrorMessage('Configuration set up failed');
@@ -98,45 +89,59 @@ export class Mystique {
     };
 
     private async createServer() {
-        
+        // fs.createFile('./');
     };
 
     public async updateServer() {
-
+        
     };
 
-    private async watchDevelopment() {
-        let files = await this.getAppFiles();
-        console.log(files);
+    private async watchDevelopment() {        
+        this.getAppFiles()
+        .then((files) => {
+            console.log(files);
+        });
     };
 
-    private async getAppFiles(path=this.rootDir) {
+    private async getAppFiles(path=this.rootDir): Promise<string[]> {
         let appFiles: string[] = [];
         let uri = vscode.Uri.file(path);
-        let dirs = await vscode.workspace.fs.readDirectory(uri);
-        debugger;
-        for await (let dir of dirs) {
-            if (dir[0].endsWith('.js') && dir[1] === 1) {
-                appFiles.push(path + '/' + dir[0]);
-            } else if (dir[1] === 2) {
-                let files = await this.getAppFiles(path + '/' + dir[0]);
-                appFiles.concat(files);                    
+        return vscode.workspace.fs.readDirectory(uri)
+        .then(async dirs => {
+            for await (let dir of dirs) {
+                if (dir[0].endsWith('.js') && dir[1] === 1) {
+                        appFiles.push(path + '/' + dir[0]);
+                    } else if (dir[1] === 2) {
+                        let files = await this.getAppFiles(path + '/' + dir[0]);
+                        appFiles = appFiles.concat(files);                 
+                    }
             }
-            debugger;
-        }
-        debugger;
-        return appFiles;
+            return appFiles;
+        });    
     }
+};
 
-    private static async parseSource(source: string) {
+// ===============================================================================================================
 
-    };
+class Helper {
 
-    private static encodeText(text: string) {
+    public static encodeText(text: string) {
         return new TextEncoder().encode(text);
     };
 
-    private static decodeText(uint8array: Uint8Array) {
+    public static decodeText(uint8array: Uint8Array) {
         return new TextDecoder().decode(uint8array);
     }
+
+    public static correctFilePathForJSON(path: string): string {
+        let chars = path.split('');
+        for (let i = 0; i < chars.length; i++) {
+            if (chars[i] === '\\') {
+                chars[i] = '/';
+            }
+        }
+        return chars.join('');
+    } 
+    
 };
+
