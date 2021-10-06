@@ -10,10 +10,11 @@ import path = require('path');
 export class Mystique {
 
     public name: string;
-    private config: Object = {};
+    private config: any = {};
     private rootDir: string = '';
     private activeFileName: string = '';
     private appFiles: string[] = [];
+    public appForest: any[] = [];
     
     constructor() {
         
@@ -33,8 +34,18 @@ export class Mystique {
             this.activeFileName = vscode.window.activeTextEditor.document.fileName;
         }
 
-        this.createConfiguration();
-        this.watchDevelopment();
+        this.createConfiguration()
+        .then(async config => {
+            this.config = config; // Issue: returns undefined when it encounters bad JSON in config file
+            await this.watchDevelopment();
+            this.appForest.forEach(tree => {
+                console.log(`App Tree: `);
+                console.log(tree);
+            });
+        })
+        .catch(err => {
+            console.error(err);
+        });   
     }
 
     private getNewConfiguration(): string {
@@ -49,11 +60,11 @@ export class Mystique {
 }`;
     }
 
-    private async createConfiguration(forced=false) {
+    private async createConfiguration(forced=false): Promise<any> {
         const path = this.rootDir + '/mistique.json';
-        fs.pathExists(path)
+        return fs.pathExists(path)
         .then(async val => { 
-            let preserve = true;     
+            let preserve = true;    
             if (val) {
                 // Do not update preserved configuration
                 let uri = vscode.Uri.file(path);
@@ -62,11 +73,10 @@ export class Mystique {
                 try {
                     let config = JSON.parse(str);
                     preserve = config.settings.preserve;
-                    this.config = config;
+                    return config;
                 } catch (err) {
-                    console.log(err);
-                    vscode.window.showErrorMessage('Bad JSON in mystique.json');
-                    return;
+                    console.error(err);
+                    vscode.window.showErrorMessage('Bad JSON in mystique.json');                
                 }
             } 
             if (!val || !preserve) {
@@ -75,16 +85,14 @@ export class Mystique {
                 let data = Helper.encodeText(config);
                 vscode.workspace.fs.writeFile(uri, data)
                 .then(() => {
-                    this.config = JSON.parse(config);
+                    config = JSON.parse(config);
                     vscode.window.showInformationMessage('Configuration set up completed');
+                    return config;
                 }, err => {
                     vscode.window.showErrorMessage('Configuration set up failed');
                     console.log(err);
                 });
             }
-        })
-        .catch(err => {
-            console.log(err);
         });
     };
 
@@ -96,10 +104,33 @@ export class Mystique {
         
     };
 
-    private async watchDevelopment() {        
-        this.getAppFiles()
-        .then((files) => {
-            console.log(files);
+    // Listen on changes to app sources during development 
+    private async watchDevelopment() {  
+        if (this.config.settings.target.includes('*')) {
+            this.getAppFiles()
+            .then((files) => {
+                this.appFiles = files;
+            });
+        } else {
+            this.appFiles = this.config.settings.target; // TODO: Check validity of paths 
+        }    
+        
+        // Convert sources to AST
+        for await (let fp of this.appFiles) {
+            let tree = await Mystique.parseSource(fp);
+            this.appForest.push(tree);
+        }
+    };
+
+    private static async parseSource(sourcePath: string): Promise<string> {
+        let uri = vscode.Uri.file(sourcePath);
+        return vscode.workspace.fs.readFile(uri)
+        .then(async data => {
+            let str = Helper.decodeText(data);
+            let ast = recast.parse(str, {parser: require('acorn')});            
+            return ast;           
+        }, err => {
+            console.error(err);
         });
     };
 
@@ -144,4 +175,3 @@ class Helper {
     } 
     
 };
-
