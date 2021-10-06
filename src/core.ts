@@ -3,9 +3,8 @@ import * as fs from 'fs-extra';
 import { TextDecoder, TextEncoder } from 'util';
 import * as recast from 'recast';
 import { v4 as uuid4 } from 'uuid';
-import path = require('path');
 
-// ===============================================================================================================
+// ========================================================= MYSTIQUE CLASS =========================================================
 
 export class Mystique {
 
@@ -13,7 +12,7 @@ export class Mystique {
     private config: any = {};
     private rootDir: string = '';
     private activeFileName: string = '';
-    private appFiles: string[] = [];
+    private appFiles: any[] = [];
     public appForest: any[] = [];
     
     constructor() {
@@ -22,6 +21,7 @@ export class Mystique {
 
     };
 
+    // Starts up Mystique
     public async loadInstance() {
         if(vscode.workspace.workspaceFolders !== undefined) {
             this.rootDir = vscode.workspace.workspaceFolders[0].uri.fsPath;
@@ -36,12 +36,8 @@ export class Mystique {
 
         this.createConfiguration()
         .then(async config => {
-            this.config = config; // Issue: returns undefined when it encounters bad JSON in config file
-            await this.watchDevelopment();
-            this.appForest.forEach(tree => {
-                console.log(`App Tree: `);
-                console.log(tree);
-            });
+            this.config = config; // ISSUE: returns undefined when it encounters bad JSON in config file
+            this.monitorFrontend();
         })
         .catch(err => {
             console.error(err);
@@ -60,6 +56,7 @@ export class Mystique {
 }`;
     }
 
+    // Create and store Mystique settings
     private async createConfiguration(forced=false): Promise<any> {
         const path = this.rootDir + '/mistique.json';
         return fs.pathExists(path)
@@ -97,43 +94,91 @@ export class Mystique {
     };
 
     private async createServer() {
-        // fs.createFile('./');
+
     };
 
     public async updateServer() {
         
     };
+ 
 
-    // Listen on changes to app sources during development 
-    private async watchDevelopment() {  
-        if (this.config.settings.target.includes('*')) {
-            this.getAppFiles()
-            .then((files) => {
-                this.appFiles = files;
-            });
-        } else {
-            this.appFiles = this.config.settings.target; // TODO: Check validity of paths 
-        }    
-        
-        // Convert sources to AST
+    // Monitor development as a whole
+    private async monitorFrontend() {  
+
+        const files = async () => {
+            if (this.config.settings.target.includes('*')) {
+                let files = await this.getAppFiles();
+                return files;
+            } else {
+                return this.config.settings.target; // TODO: Check validity of paths 
+            }
+        };
+        this.appFiles = await files();
+
         for await (let fp of this.appFiles) {
-            let tree = await Mystique.parseSource(fp);
-            this.appForest.push(tree);
+            this.monitor(fp);
         }
     };
 
-    private static async parseSource(sourcePath: string): Promise<string> {
+    // Monitor changes in a source
+    public async monitor(sourcePath: string) {
+        let tree: any;
         let uri = vscode.Uri.file(sourcePath);
-        return vscode.workspace.fs.readFile(uri)
-        .then(async data => {
-            let str = Helper.decodeText(data);
-            let ast = recast.parse(str, {parser: require('acorn')});            
-            return ast;           
+        vscode.workspace.openTextDocument(uri)
+        .then(document => {
+            vscode.workspace.onDidChangeTextDocument(async event => {
+                if (event.document === document) {
+                    console.log(`Detected changes in: ${sourcePath}`);
+                    // TODO: Look for a more efficient way to watch files 
+                    // without having to store the whole document everytime
+                    //
+                    // NOTE: It might be better to wait for a save before trying to parse
+                    try {
+                        tree = await Mystique.parseSource(document.getText()); 
+                        this.appForest.push(tree);
+                        console.log('Tree: ');
+                        console.log(tree);
+                        
+                    } catch (err) {                        
+                        // Ignore bad JS
+                    }
+                }         
+                else {
+                    // Ignore other documents
+                }
+            });
         }, err => {
             console.error(err);
         });
+    }
+
+    // Primitive implementation of an API mocking approach using a set of bare-bones heuristics 
+    private static async mock() {
+
+    }
+
+    // Source to AST parser
+    private static async parseSource(source?: string, sourcePath?: string): Promise<any> {
+        if (typeof source !== 'undefined') {
+            let tree = recast.parse(source, {parser: require('acorn')});            
+            return tree;
+        } else if (typeof sourcePath !== 'undefined') {
+            let uri = vscode.Uri.file(sourcePath);
+            return vscode.workspace.fs.readFile(uri)
+            .then(async data => {
+                let str = Helper.decodeText(data);
+                let tree = recast.parse(str, {parser: require('acorn')});            
+                return tree;           
+            }, err => {
+                console.error(err);
+            });
+        } else {
+            throw new Error('No arguments were passed');
+        }
+        
     };
 
+    // Get essential source files for the frontend app
     private async getAppFiles(path=this.rootDir): Promise<string[]> {
         let appFiles: string[] = [];
         let uri = vscode.Uri.file(path);
@@ -152,7 +197,7 @@ export class Mystique {
     }
 };
 
-// ===============================================================================================================
+// ========================================================= HELPER CLASS =========================================================
 
 class Helper {
 
