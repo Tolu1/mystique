@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs-extra';
 import { TextDecoder, TextEncoder } from 'util';
+import * as acorn from 'acorn';
 import * as recast from 'recast';
 import { v4 as uuid4 } from 'uuid';
 import { visit } from 'ast-types';
@@ -210,7 +211,7 @@ export class Mystique {
     // Source to AST parser
     private static async parseSource(source?: string, sourcePath?: string): Promise<any> {
         if (typeof source !== 'undefined') {
-            let tree = recast.parse(source, {parser: require('acorn')});            
+            let tree = acorn.parse(source, {ecmaVersion: 'latest'});        
             return tree;
         } else if (typeof sourcePath !== 'undefined') {
             let uri = vscode.Uri.file(sourcePath);
