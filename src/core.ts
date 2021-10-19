@@ -4,6 +4,7 @@ import { TextDecoder, TextEncoder } from 'util';
 import * as recast from 'recast';
 import { v4 as uuid4 } from 'uuid';
 import { visit } from 'ast-types';
+import { assert } from 'console';
 
 // ========================================================= LOGGING =========================================================
 
@@ -191,82 +192,10 @@ export class Mystique {
     // Primitive implementation of a source code to API mocking approach using a set of bare-bones heuristics, for now 
     private async shapeshiftAPI(forest: any[]) {
         console.log('shapeshifting API');
-
-        // Hardcoded heuristics to detect for APIs and their data
-        //
-        // NOTE: An ANN should replace the logic here as soon as possible
-
-        let getFetch = (tree: any) => {
-            let count = 0;
-            visit(tree, {
-                visitCallExpression: function (path) {
-                    
-                    if (path.value.callee.type === 'Identifier' && path.value.callee.name === 'fetch') {
-                        console.log('Detected use of Fetch');
-                        ++count;
-                        // console.log(path.value);
-                    } 
-                    this.traverse(path);
-                }
-            });
-            console.log(`Fetch was used ${count} times`);
-        };
-
-         let getAxios = (tree: any) => {
-            let count = 0;
-            visit(tree, {
-                visitCallExpression: function (path) {
-                    try {
-                        if (path.value.callee.object.name === 'axios') {
-                            console.log('Detected use of Axios');
-                            ++count;
-                            // console.log(path.value);
-                        }                        
-                    } catch (err) {
-                        // Do nothing
-                    }                    
-                    this.traverse(path);
-                }
-            });
-            console.log(`Axios was used ${count} times`);
-        };
-
-         let getXMLHttp = (tree: any) => {
-            let count = 0;
-            visit(tree, {
-                visitNewExpression: function (path) {                        
-                    if (path.value.callee.name === 'XMLHttpRequest') {
-                        console.log('Detected use of XMLHttpRequests');
-                        ++count;
-                        // console.log(path.value);     
-                    }                  
-                    this.traverse(path);
-                }
-                // visitVariableDeclaration: function (path) {                        
-                //     path.value.declarations.forEach((declaration: any) => {
-                //         debugger;
-                //         if (declaration.init.callee.name === 'XMLHttpRequest') {
-                //             console.log('Detected use of XMLHttpRequests');
-                //             ++count;
-                //             // console.log(path.value);
-                //         }
-                //     });                         
-                //     // debugger;
-                //     this.traverse(path);
-                // }
-            });
-            console.log(`XMLHttpRequest was used ${count} times`);
-        };
-
-         let getHTMLForm = (tree: any) => {
-
-         };
-
+        let builder = new APIFather();
+        
         forest.forEach(tree => {
-
-            getFetch(tree);
-            getAxios(tree);
-            getXMLHttp(tree);
+            builder.extractAPIs(tree, 'AST');
         });
         console.log('Done.');
         console.log('------------------------------------------');
@@ -317,6 +246,119 @@ export class Mystique {
         });    
     }
 };
+
+// ========================================================= API FATHER CLASS =========================================================
+
+class APIFather {
+
+    static sourceTypes: string[] = ['AST', 'HTML'];
+
+    public extractAPIs(source: string, sourceType: string) {
+        assert(APIFather.sourceTypes.includes(sourceType));
+
+        /** 
+         * Hardcoded heuristics that should detect for APIs and their data from sources
+         * NOTE: An ANN could provide more optimal logic here
+         */
+        if (sourceType === 'AST') {
+            
+            /** 
+             * Traverse AST and parse URLs and options for the Fetch API
+             */
+            let getFetch = (tree: any) => {
+                let count = 0;
+                visit(tree, {
+                    visitCallExpression: function (path) {                        
+                        
+                        if (path.value.callee.type === 'Identifier' && path.value.callee.name === 'fetch') {
+                            console.log('Detected use of Fetch');
+                            ++count;
+                            // console.log(path);                            
+
+                            function readArgs(path: any) {
+                                return path.value.arguments;
+                            }
+                            
+                            // When .then is used to resolve Fetch promise
+                            function hasThenBlock(path: any) {
+                                let pathThenBlock = path.parentPath.parentPath;
+                                try {
+                                    if (pathThenBlock.value.callee.property.name === 'then') {
+                                        return true;
+                                } else {
+                                    return false;
+                                }
+                                } catch (err) {
+                                    console.error(err);
+                                    return false;
+                                }
+                            };                            
+
+                            function nextThenBlock(pathThenBlock: any) {
+                                if (hasThenBlock(pathThenBlock)) {
+                                    return readArgs(pathThenBlock);
+                                } else {
+                                    return false;
+                                }
+                            }
+
+                            function getFunctionBody() {
+                                return null;
+                            }
+
+                            function getDataIdentifier(pathThenBlock: any) {
+                                let identifierExists = false;
+                                let path = pathThenBlock;
+                                while (!identifierExists) {
+                                    let args = readArgs(path);
+                                    
+                                    if (args.length > 0) {
+                                        let callback = args[0];
+                                        console.log(callback);     
+                                    }                                    
+                                    debugger;
+                                    // let body = getFunctionBody()
+                                    if (path.value) {
+                                    } else {
+                                        path = nextThenBlock(path);
+                                        debugger;
+                                        if (!path) {
+                                            return null;
+                                        }
+                                    }
+                                }
+                            }   
+                            
+                            // Get Fetch Arguments
+                            const fetchArgs = readArgs(path);
+                            if (fetchArgs.length > 0) {
+                                console.log(`url: ${fetchArgs[0].value}`);                     
+                            }
+
+                            // Scenario Await
+                            try {
+                                if (path.parentPath.value.type === 'AwaitExpression') {
+                                    console.log(path);
+                                }                        
+                            } catch (err) {
+                                // Ignore errors
+                            }
+
+                            // Scenario Then
+                            /* if (hasThenBlock(path)) {
+                                let pathThenBlock = readArgs(path);
+                                getDataIdentifier(pathThenBlock);
+                            } */
+                        } 
+                        this.traverse(path);
+                    }
+                });
+                console.log(`Fetch was used ${count} times`);
+            };
+            getFetch(source);
+        }
+    }
+}
 
 // ========================================================= HELPER CLASS =========================================================
 
